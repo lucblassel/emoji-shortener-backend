@@ -47,7 +47,7 @@ app.use(express.json()); // parse request body as JSON
 //--------------------------------------------------------
 
 // data validation schema
-const schema = yup.object().shape({
+const recordSchema = yup.object().shape({
   emojis: yup
     .string()
     .trim()
@@ -76,7 +76,6 @@ function generateRandomEmojis() {
       emojis += nodeEmoji.random().emoji;
     }
     exists = keyExists(punycode.encode(emojis));
-    console.log(`${emojis}: keyExists? ${exists}`);
   } while (exists);
   return emojis;
 }
@@ -116,6 +115,40 @@ router.get("/:id", async (req, res, next) => {
   } catch (error) {
     console.log(error);
     return res.status(500).send("Error");
+  }
+});
+
+// insert new URL
+router.post("/newURL", async (req, res, next) => {
+  let { emojis, url } = req.body;
+  let encodedEmojis = emojis ? punycode.encode(emojis) : undefined;
+  try {
+    await recordSchema.validate({
+      encodedEmojis,
+      url,
+    });
+
+    if (!encodedEmojis) {
+      emojis = generateRandomEmojis();
+      encodedEmojis = punycode.encode(emojis);
+    } else {
+      if (keyExists(encodedEmojis)) {
+        throw new Error("This emoji slug already exists... 😿");
+      }
+    }
+
+    if (encodedEmojis.slice(0, -1) === emojis) {
+      throw new Error("There must be at least 1 emoji in the slug... 👹");
+    }
+
+    let newURL = { emojis: encodedEmojis, url: url, raw: emojis };
+    let created = await urls.insert(newURL);
+    console.log(created);
+    res.send({ port: port, domain: domain, ...created });
+  } catch (error) {
+    console.log("Error caught on this req");
+    console.log("params", req.params, "body", req.body);
+    next(error);
   }
 });
 
