@@ -36,32 +36,6 @@ const port = process.env.PORT || 4000;
 // get domain name
 const domain = process.env.DOMAIN || "localhost";
 
-// // deal with CORS bull💩
-// var allowedOrigins = ['http://localhost:4000',
-//                       `http://localhost:${port}`,
-//                       `http://${domain}:4000`, 
-//                       `http://${domain}:${port}`,
-//                       'https://localhost:4000',
-//                       `https://localhost:${port}`,
-//                       `https://${domain}:4000`, 
-//                       `https://${domain}:${port}`,
-//                       "https://emoji-shortener-frontend.vercel.app",
-//                       "http://emoji-shortener-frontend.vercel.app"
-//                     ];
-// app.use(cors({
-//   origin: function(origin, callback){
-//     // allow requests with no origin 
-//     // (like mobile apps or curl requests)
-//     if(!origin) return callback(null, true);
-//     if(allowedOrigins.indexOf(origin) === -1){
-//       var msg = 'The CORS policy for this site does not ' +
-//                 'allow access from the specified Origin.';
-//       return callback(new Error(msg), false);
-//     }
-//     return callback(null, true);
-//   }
-// }));
-
 //cors
 app.use(cors({origin: true}));
 //cors testing
@@ -140,7 +114,7 @@ router.get("/:id", async (req, res, next) => {
     const url = await urls.findOne({ emojis: req.params.id });
     if (url) {
       res.json({
-        emojiURL: `http://${domain}/${url.raw}`,
+        emojiURL: `https://${domain}/${url.raw}`,
         redirectURL: url.url,
       });
     } else {
