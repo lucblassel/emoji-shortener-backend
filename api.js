@@ -63,7 +63,7 @@ const domain = process.env.DOMAIN || "localhost";
 // }));
 
 //cors
-app.use(cors());
+app.use(cors({origin: true}));
 // middleware
 app.use(morgan("combined")); // log requests
 // app.use(cors()); // enable CORS
