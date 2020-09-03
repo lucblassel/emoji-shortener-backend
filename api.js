@@ -135,7 +135,7 @@ router.post("/newURL", async (req, res, next) => {
     });
 
     if (!encodedEmojis) {
-      emojis = generateRandomEmojis();
+      emojis = await generateRandomEmojis();
       encodedEmojis = punycode.encode(emojis);
     } else {
       let exists = await keyExists(encodedEmojis);
