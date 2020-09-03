@@ -8,6 +8,7 @@ const yup = require("yup");
 const nodeEmoji = require("node-emoji");
 const rateLimit = require("express-rate-limit");
 const slowDown = require("express-slow-down");
+const { exists } = require("fs");
 
 // reading database address + secret
 require("dotenv").config();
@@ -56,8 +57,8 @@ const recordSchema = yup.object().shape({
 });
 
 // check if key exists
-function keyExists(key) {
-  urls.findOne({ emojis: key }).then((doc) => {
+async function keyExists(key) {
+  return urls.findOne({ emojis: key }).then((doc) => {
     if (doc) {
       return true;
     } else {
@@ -67,7 +68,7 @@ function keyExists(key) {
 }
 
 // generate random key not in use
-function generateRandomEmojis() {
+async function generateRandomEmojis() {
   let emojis;
   let exists;
   do {
@@ -75,7 +76,7 @@ function generateRandomEmojis() {
     for (let i = 0; i < 5; i++) {
       emojis += nodeEmoji.random().emoji;
     }
-    exists = keyExists(punycode.encode(emojis));
+    exists = await keyExists(punycode.encode(emojis));
   } while (exists);
   return emojis;
 }
@@ -85,6 +86,10 @@ function generateRandomEmojis() {
 //--------------------------------------------------------
 
 const router = express.Router();
+
+// custom error messages
+const existsErrorMessage = "This emoji slug already exists... 😿";
+const emojiErrorMessage = "There must be at least 1 emoji in the slug... 👹";
 
 // get all urls from most recent to oldest
 router.get("/", async (req, res) => {
@@ -122,6 +127,7 @@ router.get("/:id", async (req, res, next) => {
 router.post("/newURL", async (req, res, next) => {
   let { emojis, url } = req.body;
   let encodedEmojis = emojis ? punycode.encode(emojis) : undefined;
+
   try {
     await recordSchema.validate({
       encodedEmojis,
@@ -132,13 +138,15 @@ router.post("/newURL", async (req, res, next) => {
       emojis = generateRandomEmojis();
       encodedEmojis = punycode.encode(emojis);
     } else {
-      if (keyExists(encodedEmojis)) {
-        throw new Error("This emoji slug already exists... 😿");
+      let exists = await keyExists(encodedEmojis);
+      console.log("exists: ", exists)
+      if (exists) {
+        throw new Error(existsErrorMessage);
       }
     }
 
     if (encodedEmojis.slice(0, -1) === emojis) {
-      throw new Error("There must be at least 1 emoji in the slug... 👹");
+      throw new Error(emojiErrorMessage);
     }
 
     let newURL = { emojis: encodedEmojis, url: url, raw: emojis };
@@ -154,6 +162,32 @@ router.post("/newURL", async (req, res, next) => {
 
 // register routes
 app.use("/api", router);
+
+// handle errors
+app.use((error, req, res, next) => {
+  if (error.status) {
+    res.status(error.status);
+  } else {
+    switch (error.message) {
+      case existsErrorMessage:
+        res.status(444);
+        break;
+      case emojiErrorMessage:
+        res.status(555);
+        break;
+      default:
+        res.status(500);
+        break;
+    }
+  }
+  let obj = {
+    message: error.message,
+    stack: process.env.NODE_ENV === "production" ? "🥞" : error.stack,
+    req: req.body,
+  };
+  res.json(obj);
+  console.log(obj);
+});
 
 // start listening
 app.listen(port, () => {
